@@ -7,10 +7,7 @@ import org.springframework.http.client.reactive.JettyClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.codec.ClientCodecConfigurer;
 import org.springframework.lang.Nullable;
-import org.springframework.util.Assert;
-import org.springframework.util.ClassUtils;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
+import org.springframework.util.*;
 import org.springframework.web.util.UriBuilderFactory;
 
 import java.util.ArrayList;
@@ -193,10 +190,10 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
         ClientHttpConnector connectorToUse =
                 (this.connector != null ? this.connector : initConnector());
 
-//        ExchangeFunction exchange = (this.exchangeFunction == null ?
-//                ExchangeFunctions.create(connectorToUse, initExchangeStrategies()) :
-//                this.exchangeFunction);
-//
+        ExchangeFunction exchange = (this.exchangeFunction == null ?
+                ExchangeFunctions.create(connectorToUse, initExchangeStrategies()) :
+                this.exchangeFunction);
+
 //        ExchangeFunction filteredExchange = (this.filters != null ? this.filters.stream()
 //                .reduce(ExchangeFilterFunction::andThen)
 //                .map(filter -> filter.apply(exchange))
@@ -224,5 +221,15 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
             return new HttpComponentsClientHttpConnector();
         }
         throw new IllegalStateException("No suitable default ClientHttpConnector found");
+    }
+
+    private ExchangeStrategies initExchangeStrategies() {
+        if (CollectionUtils.isEmpty(this.strategiesConfigurers)) {
+            return (this.strategies != null ? this.strategies : ExchangeStrategies.withDefaults());
+        }
+        ExchangeStrategies.Builder builder =
+                (this.strategies != null ? this.strategies.mutate() : ExchangeStrategies.builder());
+        this.strategiesConfigurers.forEach(configurer -> configurer.accept(builder));
+        return builder.build();
     }
 }
