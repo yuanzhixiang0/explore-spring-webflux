@@ -431,6 +431,42 @@ class DefaultWebClient implements WebClient {
 
         @Override
         public <T> Mono<ResponseEntity<T>> toEntity(Class<T> bodyClass) {
+            return this.responseMono.flatMap(response ->
+                    WebClientUtils.mapToEntity(response,
+                            handleBodyMono(response, response.bodyToMono(bodyClass))));
+        }
+
+        private <T> Mono<T> handleBodyMono(ClientResponse response, Mono<T> body) {
+            body = body.onErrorResume(WebClientUtils.WRAP_EXCEPTION_PREDICATE, exceptionWrappingFunction(response));
+            Mono<T> result = applyStatusHandlers(response);
+            return (result != null ? result.switchIfEmpty(body) : body);
+        }
+
+        private <T> Function<Throwable, Mono<? extends T>> exceptionWrappingFunction(ClientResponse response) {
+            return t -> response.createException().flatMap(ex -> Mono.error(ex.initCause(t)));
+        }
+
+        @Nullable
+        private <T> Mono<T> applyStatusHandlers(ClientResponse response) {
+//            int statusCode = response.rawStatusCode();
+//            for (StatusHandler handler : this.statusHandlers) {
+//                if (handler.test(statusCode)) {
+//                    Mono<? extends Throwable> exMono;
+//                    try {
+//                        exMono = handler.apply(response);
+//                        exMono = exMono.flatMap(ex -> releaseIfNotConsumed(response, ex));
+//                        exMono = exMono.onErrorResume(ex -> releaseIfNotConsumed(response, ex));
+//                    }
+//                    catch (Throwable ex2) {
+//                        exMono = releaseIfNotConsumed(response, ex2);
+//                    }
+//                    Mono<T> result = exMono.flatMap(Mono::error);
+//                    HttpRequest request = this.requestSupplier.get();
+//                    return insertCheckpoint(result, statusCode, request);
+//                }
+//            }
+//            return null;
+
             throw new Error();
         }
 

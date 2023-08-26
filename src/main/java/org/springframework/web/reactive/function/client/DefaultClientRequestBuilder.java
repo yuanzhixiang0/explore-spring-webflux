@@ -6,15 +6,16 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.client.reactive.ClientHttpRequest;
 import org.springframework.lang.Nullable;
-import org.springframework.util.Assert;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
+import org.springframework.util.*;
 import org.springframework.web.reactive.function.BodyInserter;
 import org.springframework.web.reactive.function.BodyInserters;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
@@ -126,6 +127,94 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 
     @Override
     public ClientRequest build() {
-        throw new Error();
+        return new BodyInserterRequest(
+                this.method, this.url, this.headers, this.cookies, this.body,
+                this.attributes, this.httpRequestConsumer);
+    }
+
+    private static class BodyInserterRequest implements ClientRequest {
+
+        private final HttpMethod method;
+
+        private final URI url;
+
+        private final HttpHeaders headers;
+
+        private final MultiValueMap<String, String> cookies;
+
+        private final BodyInserter<?, ? super ClientHttpRequest> body;
+
+        private final Map<String, Object> attributes;
+
+        @Nullable
+        private final Consumer<ClientHttpRequest> httpRequestConsumer;
+
+        private final String logPrefix;
+
+        public BodyInserterRequest(HttpMethod method, URI url, HttpHeaders headers,
+                                   MultiValueMap<String, String> cookies, BodyInserter<?, ? super ClientHttpRequest> body,
+                                   Map<String, Object> attributes, @Nullable Consumer<ClientHttpRequest> httpRequestConsumer) {
+
+            this.method = method;
+            this.url = url;
+            this.headers = HttpHeaders.readOnlyHttpHeaders(headers);
+            this.cookies = CollectionUtils.unmodifiableMultiValueMap(cookies);
+            this.body = body;
+            this.attributes = Collections.unmodifiableMap(attributes);
+            this.httpRequestConsumer = httpRequestConsumer;
+
+            Object id = attributes.computeIfAbsent(LOG_ID_ATTRIBUTE, name -> ObjectUtils.getIdentityHexString(this));
+            this.logPrefix = "[" + id + "] ";
+        }
+
+        @Override
+        public HttpMethod method() {
+            throw new Error();
+        }
+
+        @Override
+        public URI url() {
+            throw new Error();
+        }
+
+        @Override
+        public HttpHeaders headers() {
+            throw new Error();
+        }
+
+        @Override
+        public MultiValueMap<String, String> cookies() {
+            throw new Error();
+        }
+
+        @Override
+        public BodyInserter<?, ? super ClientHttpRequest> body() {
+            throw new Error();
+        }
+
+        @Override
+        public Optional<Object> attribute(String name) {
+            throw new Error();
+        }
+
+        @Override
+        public Map<String, Object> attributes() {
+            throw new Error();
+        }
+
+        @Override
+        public Consumer<ClientHttpRequest> httpRequest() {
+            throw new Error();
+        }
+
+        @Override
+        public String logPrefix() {
+            throw new Error();
+        }
+
+        @Override
+        public Mono<Void> writeTo(ClientHttpRequest request, ExchangeStrategies strategies) {
+            throw new Error();
+        }
     }
 }
