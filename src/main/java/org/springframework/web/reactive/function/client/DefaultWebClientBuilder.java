@@ -2,6 +2,9 @@ package org.springframework.web.reactive.function.client;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.reactive.ClientHttpConnector;
+import org.springframework.http.client.reactive.HttpComponentsClientHttpConnector;
+import org.springframework.http.client.reactive.JettyClientHttpConnector;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.codec.ClientCodecConfigurer;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -151,7 +154,8 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 
     @Override
     public WebClient.Builder clientConnector(ClientHttpConnector connector) {
-        throw new Error();
+        this.connector = connector;
+        return this;
     }
 
     @Override
@@ -186,6 +190,39 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 
     @Override
     public WebClient build() {
+        ClientHttpConnector connectorToUse =
+                (this.connector != null ? this.connector : initConnector());
+
+//        ExchangeFunction exchange = (this.exchangeFunction == null ?
+//                ExchangeFunctions.create(connectorToUse, initExchangeStrategies()) :
+//                this.exchangeFunction);
+//
+//        ExchangeFunction filteredExchange = (this.filters != null ? this.filters.stream()
+//                .reduce(ExchangeFilterFunction::andThen)
+//                .map(filter -> filter.apply(exchange))
+//                .orElse(exchange) : exchange);
+//
+//        HttpHeaders defaultHeaders = copyDefaultHeaders();
+//
+//        MultiValueMap<String, String> defaultCookies = copyDefaultCookies();
+//
+//        return new DefaultWebClient(filteredExchange, initUriBuilderFactory(),
+//                defaultHeaders,
+//                defaultCookies,
+//                this.defaultRequest, new DefaultWebClientBuilder(this));
         throw new Error();
+    }
+
+    private ClientHttpConnector initConnector() {
+        if (reactorClientPresent) {
+            return new ReactorClientHttpConnector();
+        }
+        else if (jettyClientPresent) {
+            return new JettyClientHttpConnector();
+        }
+        else if (httpComponentsClientPresent) {
+            return new HttpComponentsClientHttpConnector();
+        }
+        throw new IllegalStateException("No suitable default ClientHttpConnector found");
     }
 }
