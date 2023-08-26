@@ -8,6 +8,7 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.http.codec.ClientCodecConfigurer;
 import org.springframework.lang.Nullable;
 import org.springframework.util.*;
+import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilderFactory;
 
 import java.util.ArrayList;
@@ -202,11 +203,10 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 
         MultiValueMap<String, String> defaultCookies = copyDefaultCookies();
 
-//        return new DefaultWebClient(filteredExchange, initUriBuilderFactory(),
-//                defaultHeaders,
-//                defaultCookies,
-//                this.defaultRequest, new DefaultWebClientBuilder(this));
-        throw new Error();
+        return new DefaultWebClient(filteredExchange, initUriBuilderFactory(),
+                defaultHeaders,
+                defaultCookies,
+                this.defaultRequest, new DefaultWebClientBuilder(this));
     }
 
     private ClientHttpConnector initConnector() {
@@ -229,6 +229,17 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
         this.strategiesConfigurers.forEach(configurer -> configurer.accept(builder));
         return builder.build();
     }
+
+    private UriBuilderFactory initUriBuilderFactory() {
+        if (this.uriBuilderFactory != null) {
+            return this.uriBuilderFactory;
+        }
+        DefaultUriBuilderFactory factory = (this.baseUrl != null ?
+                new DefaultUriBuilderFactory(this.baseUrl) : new DefaultUriBuilderFactory());
+        factory.setDefaultUriVariables(this.defaultUriVariables);
+        return factory;
+    }
+
 
     @Nullable
     private HttpHeaders copyDefaultHeaders() {
