@@ -2,12 +2,13 @@ package org.springframework.web.reactive.function.client;
 
 import org.reactivestreams.Publisher;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.http.client.reactive.ClientHttpRequest;
+import org.springframework.http.client.reactive.ClientHttpResponse;
 import org.springframework.lang.Nullable;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.reactive.function.BodyExtractor;
 import org.springframework.web.reactive.function.BodyInserter;
 import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriBuilderFactory;
@@ -18,10 +19,11 @@ import reactor.util.context.Context;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.*;
 
 class DefaultWebClient implements WebClient {
 
@@ -226,7 +228,51 @@ class DefaultWebClient implements WebClient {
 
         @Override
         public ResponseSpec retrieve() {
-            throw new Error();
+            return new DefaultResponseSpec(exchange(), this::createRequest);
+        }
+
+        private HttpRequest createRequest() {
+            return new HttpRequest() {
+                private final URI uri = initUri();
+                private final HttpHeaders headers = initHeaders();
+
+                @Override
+                public HttpMethod getMethod() {
+                    return httpMethod;
+                }
+
+                @Override
+                public String getMethodValue() {
+                    return httpMethod.name();
+                }
+
+                @Override
+                public URI getURI() {
+                    return this.uri;
+                }
+
+                @Override
+                public HttpHeaders getHeaders() {
+                    return this.headers;
+                }
+            };
+        }
+
+        private URI initUri() {
+            return (this.uri != null ? this.uri : uriBuilderFactory.expand(""));
+        }
+
+        private HttpHeaders initHeaders() {
+            if (CollectionUtils.isEmpty(this.headers)) {
+                return (defaultHeaders != null ? defaultHeaders : new HttpHeaders());
+            } else if (CollectionUtils.isEmpty(defaultHeaders)) {
+                return this.headers;
+            } else {
+                HttpHeaders result = new HttpHeaders();
+                result.putAll(defaultHeaders);
+                result.putAll(this.headers);
+                return result;
+            }
         }
 
         @Override
@@ -290,4 +336,116 @@ class DefaultWebClient implements WebClient {
         }
     }
 
+    private static class DefaultResponseSpec implements ResponseSpec {
+
+        private static final IntPredicate STATUS_CODE_ERROR = (value -> value >= 400);
+
+        private static final StatusHandler DEFAULT_STATUS_HANDLER =
+                new StatusHandler(STATUS_CODE_ERROR, ClientResponse::createException);
+
+        private final Mono<ClientResponse> responseMono;
+
+        private final Supplier<HttpRequest> requestSupplier;
+
+        private final List<StatusHandler> statusHandlers = new ArrayList<>(1);
+
+
+        DefaultResponseSpec(Mono<ClientResponse> responseMono, Supplier<HttpRequest> requestSupplier) {
+            this.responseMono = responseMono;
+            this.requestSupplier = requestSupplier;
+            this.statusHandlers.add(DEFAULT_STATUS_HANDLER);
+        }
+
+        @Override
+        public ResponseSpec onStatus(Predicate<HttpStatus> statusPredicate, Function<ClientResponse, Mono<? extends Throwable>> exceptionFunction) {
+            throw new Error();
+        }
+
+        @Override
+        public ResponseSpec onRawStatus(IntPredicate statusCodePredicate, Function<ClientResponse, Mono<? extends Throwable>> exceptionFunction) {
+            throw new Error();
+        }
+
+        @Override
+        public <T> Mono<T> bodyToMono(Class<T> elementClass) {
+            throw new Error();
+        }
+
+        @Override
+        public <T> Mono<T> bodyToMono(ParameterizedTypeReference<T> elementTypeRef) {
+            throw new Error();
+        }
+
+        @Override
+        public <T> Flux<T> bodyToFlux(Class<T> elementClass) {
+            throw new Error();
+        }
+
+        @Override
+        public <T> Flux<T> bodyToFlux(ParameterizedTypeReference<T> elementTypeRef) {
+            throw new Error();
+        }
+
+        @Override
+        public <T> Mono<ResponseEntity<T>> toEntity(Class<T> bodyClass) {
+            throw new Error();
+        }
+
+        @Override
+        public <T> Mono<ResponseEntity<T>> toEntity(ParameterizedTypeReference<T> bodyTypeReference) {
+            throw new Error();
+        }
+
+        @Override
+        public <T> Mono<ResponseEntity<List<T>>> toEntityList(Class<T> elementClass) {
+            throw new Error();
+        }
+
+        @Override
+        public <T> Mono<ResponseEntity<List<T>>> toEntityList(ParameterizedTypeReference<T> elementTypeRef) {
+            throw new Error();
+        }
+
+        @Override
+        public <T> Mono<ResponseEntity<Flux<T>>> toEntityFlux(Class<T> elementType) {
+            throw new Error();
+        }
+
+        @Override
+        public <T> Mono<ResponseEntity<Flux<T>>> toEntityFlux(ParameterizedTypeReference<T> elementTypeReference) {
+            throw new Error();
+        }
+
+        @Override
+        public <T> Mono<ResponseEntity<Flux<T>>> toEntityFlux(BodyExtractor<Flux<T>, ? super ClientHttpResponse> bodyExtractor) {
+            throw new Error();
+        }
+
+        @Override
+        public Mono<ResponseEntity<Void>> toBodilessEntity() {
+            throw new Error();
+        }
+
+        private static class StatusHandler {
+
+            private final IntPredicate predicate;
+
+            private final Function<ClientResponse, Mono<? extends Throwable>> exceptionFunction;
+
+            public StatusHandler(IntPredicate predicate,
+                                 Function<ClientResponse, Mono<? extends Throwable>> exceptionFunction) {
+
+                this.predicate = predicate;
+                this.exceptionFunction = exceptionFunction;
+            }
+
+            public boolean test(int status) {
+                return this.predicate.test(status);
+            }
+
+            public Mono<? extends Throwable> apply(ClientResponse response) {
+                return this.exceptionFunction.apply(response);
+            }
+        }
+    }
 }
