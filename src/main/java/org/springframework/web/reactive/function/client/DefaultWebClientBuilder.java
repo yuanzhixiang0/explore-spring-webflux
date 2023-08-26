@@ -81,8 +81,7 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
         if (other.defaultHeaders != null) {
             this.defaultHeaders = new HttpHeaders();
             this.defaultHeaders.putAll(other.defaultHeaders);
-        }
-        else {
+        } else {
             this.defaultHeaders = null;
         }
 
@@ -194,13 +193,13 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
                 ExchangeFunctions.create(connectorToUse, initExchangeStrategies()) :
                 this.exchangeFunction);
 
-//        ExchangeFunction filteredExchange = (this.filters != null ? this.filters.stream()
-//                .reduce(ExchangeFilterFunction::andThen)
-//                .map(filter -> filter.apply(exchange))
-//                .orElse(exchange) : exchange);
-//
-//        HttpHeaders defaultHeaders = copyDefaultHeaders();
-//
+        ExchangeFunction filteredExchange = (this.filters != null ? this.filters.stream()
+                .reduce(ExchangeFilterFunction::andThen)
+                .map(filter -> filter.apply(exchange))
+                .orElse(exchange) : exchange);
+
+        HttpHeaders defaultHeaders = copyDefaultHeaders();
+
 //        MultiValueMap<String, String> defaultCookies = copyDefaultCookies();
 //
 //        return new DefaultWebClient(filteredExchange, initUriBuilderFactory(),
@@ -213,11 +212,9 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
     private ClientHttpConnector initConnector() {
         if (reactorClientPresent) {
             return new ReactorClientHttpConnector();
-        }
-        else if (jettyClientPresent) {
+        } else if (jettyClientPresent) {
             return new JettyClientHttpConnector();
-        }
-        else if (httpComponentsClientPresent) {
+        } else if (httpComponentsClientPresent) {
             return new HttpComponentsClientHttpConnector();
         }
         throw new IllegalStateException("No suitable default ClientHttpConnector found");
@@ -231,5 +228,16 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
                 (this.strategies != null ? this.strategies.mutate() : ExchangeStrategies.builder());
         this.strategiesConfigurers.forEach(configurer -> configurer.accept(builder));
         return builder.build();
+    }
+
+    @Nullable
+    private HttpHeaders copyDefaultHeaders() {
+        if (this.defaultHeaders != null) {
+            HttpHeaders copy = new HttpHeaders();
+            this.defaultHeaders.forEach((key, values) -> copy.put(key, new ArrayList<>(values)));
+            return HttpHeaders.readOnlyHttpHeaders(copy);
+        } else {
+            return null;
+        }
     }
 }
