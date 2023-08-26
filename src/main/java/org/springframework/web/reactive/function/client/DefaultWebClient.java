@@ -7,6 +7,7 @@ import org.springframework.http.client.reactive.ClientHttpRequest;
 import org.springframework.http.client.reactive.ClientHttpResponse;
 import org.springframework.lang.Nullable;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyExtractor;
 import org.springframework.web.reactive.function.BodyInserter;
@@ -275,6 +276,21 @@ class DefaultWebClient implements WebClient {
             }
         }
 
+        private MultiValueMap<String, String> initCookies() {
+            if (CollectionUtils.isEmpty(this.cookies)) {
+                return (defaultCookies != null ? defaultCookies : new LinkedMultiValueMap<>());
+            }
+            else if (CollectionUtils.isEmpty(defaultCookies)) {
+                return this.cookies;
+            }
+            else {
+                MultiValueMap<String, String> result = new LinkedMultiValueMap<>();
+                result.putAll(defaultCookies);
+                result.putAll(this.cookies);
+                return result;
+            }
+        }
+
         @Override
         public <V> Mono<V> exchangeToMono(Function<ClientResponse, ? extends Mono<V>> responseHandler) {
             throw new Error();
@@ -286,8 +302,35 @@ class DefaultWebClient implements WebClient {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public Mono<ClientResponse> exchange() {
-            throw new Error();
+            ClientRequest request = (this.inserter != null ?
+                    initRequestBuilder().body(this.inserter).build() :
+                    initRequestBuilder().build());
+
+            return Mono.defer(() -> {
+                Mono<ClientResponse> responseMono = exchangeFunction.exchange(request)
+                        .checkpoint("Request to " + this.httpMethod.name() + " " + this.uri + " [DefaultWebClient]")
+                        .switchIfEmpty(NO_HTTP_CLIENT_RESPONSE_ERROR);
+                if (this.contextModifier != null) {
+                    responseMono = responseMono.contextWrite(this.contextModifier);
+                }
+                return responseMono;
+            });
+        }
+
+        private ClientRequest.Builder initRequestBuilder() {
+            if (defaultRequest != null) {
+                defaultRequest.accept(this);
+            }
+            ClientRequest.Builder builder = ClientRequest.create(this.httpMethod, initUri())
+                    .headers(headers -> headers.addAll(initHeaders()))
+                    .cookies(cookies -> cookies.addAll(initCookies()))
+                    .attributes(attributes -> attributes.putAll(this.attributes));
+            if (this.httpRequestConsumer != null) {
+                builder.httpRequest(this.httpRequestConsumer);
+            }
+            return builder;
         }
 
         @Override
