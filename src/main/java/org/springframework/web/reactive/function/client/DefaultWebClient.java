@@ -132,20 +132,20 @@ class DefaultWebClient implements WebClient {
         @Nullable
         private Consumer<ClientHttpRequest> httpRequestConsumer;
 
-
         DefaultRequestBodyUriSpec(HttpMethod httpMethod) {
             this.httpMethod = httpMethod;
         }
 
-
         @Override
         public RequestBodySpec uri(URI uri) {
-            throw new Error();
+            this.uri = uri;
+            return this;
         }
 
         @Override
-        public RequestBodySpec uri(String uri, Object... uriVariables) {
-            throw new Error();
+        public RequestBodySpec uri(String uriTemplate, Object... uriVariables) {
+            attribute(URI_TEMPLATE_ATTRIBUTE, uriTemplate);
+            return uri(uriBuilderFactory.expand(uriTemplate, uriVariables));
         }
 
         @Override
@@ -205,7 +205,8 @@ class DefaultWebClient implements WebClient {
 
         @Override
         public RequestBodySpec attribute(String name, Object value) {
-            throw new Error();
+            this.attributes.put(name, value);
+            return this;
         }
 
         @Override
