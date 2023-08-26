@@ -155,8 +155,7 @@ public interface ClientRequest {
      * @return the created builder
      */
     static Builder create(HttpMethod method, URI url) {
-//        return new DefaultClientRequestBuilder(method, url);
-        throw new Error();
+        return new DefaultClientRequestBuilder(method, url);
     }
 
 
