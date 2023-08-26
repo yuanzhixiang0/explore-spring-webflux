@@ -64,8 +64,7 @@ public interface ExchangeStrategies {
      * provided by {@link ClientCodecConfigurer}.
      */
     static ExchangeStrategies withDefaults() {
-//        return DefaultExchangeStrategiesBuilder.DEFAULT_EXCHANGE_STRATEGIES;
-        throw new Error();
+        return DefaultExchangeStrategiesBuilder.DEFAULT_EXCHANGE_STRATEGIES;
     }
 
     /**
