@@ -3,10 +3,15 @@ package org.springframework.web.reactive.function.client;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.codec.ClientCodecConfigurer;
+import org.springframework.lang.Nullable;
+import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.util.UriBuilderFactory;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -28,9 +33,75 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
                         ClassUtils.isPresent("org.apache.hc.core5.reactive.ReactiveDataConsumer", loader);
     }
 
+    @Nullable
+    private String baseUrl;
+
+    @Nullable
+    private Map<String, ?> defaultUriVariables;
+
+    @Nullable
+    private UriBuilderFactory uriBuilderFactory;
+
+    @Nullable
+    private HttpHeaders defaultHeaders;
+
+    @Nullable
+    private MultiValueMap<String, String> defaultCookies;
+
+    @Nullable
+    private Consumer<WebClient.RequestHeadersSpec<?>> defaultRequest;
+
+    @Nullable
+    private List<ExchangeFilterFunction> filters;
+
+    @Nullable
+    private ClientHttpConnector connector;
+
+    @Nullable
+    private ExchangeStrategies strategies;
+
+    @Nullable
+    private List<Consumer<ExchangeStrategies.Builder>> strategiesConfigurers;
+
+    @Nullable
+    private ExchangeFunction exchangeFunction;
+
+
+    public DefaultWebClientBuilder() {
+    }
+
+    public DefaultWebClientBuilder(DefaultWebClientBuilder other) {
+        Assert.notNull(other, "DefaultWebClientBuilder must not be null");
+
+        this.baseUrl = other.baseUrl;
+        this.defaultUriVariables = (other.defaultUriVariables != null ?
+                new LinkedHashMap<>(other.defaultUriVariables) : null);
+        this.uriBuilderFactory = other.uriBuilderFactory;
+
+        if (other.defaultHeaders != null) {
+            this.defaultHeaders = new HttpHeaders();
+            this.defaultHeaders.putAll(other.defaultHeaders);
+        }
+        else {
+            this.defaultHeaders = null;
+        }
+
+        this.defaultCookies = (other.defaultCookies != null ?
+                new LinkedMultiValueMap<>(other.defaultCookies) : null);
+        this.defaultRequest = other.defaultRequest;
+        this.filters = (other.filters != null ? new ArrayList<>(other.filters) : null);
+
+        this.connector = other.connector;
+        this.strategies = other.strategies;
+        this.strategiesConfigurers = (other.strategiesConfigurers != null ?
+                new ArrayList<>(other.strategiesConfigurers) : null);
+        this.exchangeFunction = other.exchangeFunction;
+    }
+
     @Override
     public WebClient.Builder baseUrl(String baseUrl) {
-        throw new Error();
+        this.baseUrl = baseUrl;
+        return this;
     }
 
     @Override
