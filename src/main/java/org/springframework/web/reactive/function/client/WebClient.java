@@ -160,8 +160,7 @@ public interface WebClient {
      * Obtain a {@code WebClient} builder.
      */
     static WebClient.Builder builder() {
-//        return new DefaultWebClientBuilder();
-        throw new Error();
+        return new DefaultWebClientBuilder();
     }
 
 
