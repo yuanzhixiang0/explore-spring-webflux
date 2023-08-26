@@ -200,8 +200,8 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
 
         HttpHeaders defaultHeaders = copyDefaultHeaders();
 
-//        MultiValueMap<String, String> defaultCookies = copyDefaultCookies();
-//
+        MultiValueMap<String, String> defaultCookies = copyDefaultCookies();
+
 //        return new DefaultWebClient(filteredExchange, initUriBuilderFactory(),
 //                defaultHeaders,
 //                defaultCookies,
@@ -236,6 +236,17 @@ final class DefaultWebClientBuilder implements WebClient.Builder {
             HttpHeaders copy = new HttpHeaders();
             this.defaultHeaders.forEach((key, values) -> copy.put(key, new ArrayList<>(values)));
             return HttpHeaders.readOnlyHttpHeaders(copy);
+        } else {
+            return null;
+        }
+    }
+
+    @Nullable
+    private MultiValueMap<String, String> copyDefaultCookies() {
+        if (this.defaultCookies != null) {
+            MultiValueMap<String, String> copy = new LinkedMultiValueMap<>(this.defaultCookies.size());
+            this.defaultCookies.forEach((key, values) -> copy.put(key, new ArrayList<>(values)));
+            return CollectionUtils.unmodifiableMultiValueMap(copy);
         } else {
             return null;
         }
