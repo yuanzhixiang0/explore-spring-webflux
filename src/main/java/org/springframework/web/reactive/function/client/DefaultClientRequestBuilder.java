@@ -169,17 +169,17 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 
         @Override
         public HttpMethod method() {
-            throw new Error();
+            return this.method;
         }
 
         @Override
         public URI url() {
-            throw new Error();
+          return this.url;
         }
 
         @Override
         public HttpHeaders headers() {
-            throw new Error();
+           return this.headers;
         }
 
         @Override

@@ -2,10 +2,18 @@ package org.springframework.web.reactive.function.client;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.core.log.LogFormatUtils;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.reactive.ClientHttpConnector;
+import org.springframework.http.client.reactive.ClientHttpResponse;
 import org.springframework.http.codec.LoggingCodecSupport;
 import org.springframework.util.Assert;
 import reactor.core.publisher.Mono;
+
+import java.net.URI;
 
 /**
  * Static factory methods to create an {@link ExchangeFunction}.
@@ -70,8 +78,76 @@ public abstract class ExchangeFunctions {
 
 
         @Override
-        public Mono<ClientResponse> exchange(ClientRequest request) {
-            throw new Error();
+        public Mono<ClientResponse> exchange(ClientRequest clientRequest) {
+            Assert.notNull(clientRequest, "ClientRequest must not be null");
+            HttpMethod httpMethod = clientRequest.method();
+            URI url = clientRequest.url();
+
+            return this.connector
+                    .connect(httpMethod, url, httpRequest -> clientRequest.writeTo(httpRequest, this.strategies))
+                    .doOnRequest(n -> logRequest(clientRequest))
+                    .doOnCancel(() -> logger.debug(clientRequest.logPrefix() + "Cancel signal (to close connection)"))
+                    .onErrorResume(WebClientUtils.WRAP_EXCEPTION_PREDICATE, t -> wrapException(t, clientRequest))
+                    .map(httpResponse -> {
+                        String logPrefix = getLogPrefix(clientRequest, httpResponse);
+                        logResponse(httpResponse, logPrefix);
+                        return new DefaultClientResponse(
+                                httpResponse, this.strategies, logPrefix, httpMethod.name() + " " + url,
+                                () -> createRequest(clientRequest));
+                    });
+        }
+
+        private void logRequest(ClientRequest request) {
+            LogFormatUtils.traceDebug(logger, traceOn ->
+                    request.logPrefix() + "HTTP " + request.method() + " " + request.url() +
+                            (traceOn ? ", headers=" + formatHeaders(request.headers()) : "")
+            );
+        }
+
+        private String formatHeaders(HttpHeaders headers) {
+            return this.enableLoggingRequestDetails ? headers.toString() : headers.isEmpty() ? "{}" : "{masked}";
+        }
+
+        private <T> Mono<T> wrapException(Throwable t, ClientRequest r) {
+            return Mono.error(() -> new WebClientRequestException(t, r.method(), r.url(), r.headers()));
+        }
+
+        private String getLogPrefix(ClientRequest request, ClientHttpResponse response) {
+            return request.logPrefix() + "[" + response.getId() + "] ";
+        }
+
+        private void logResponse(ClientHttpResponse response, String logPrefix) {
+            LogFormatUtils.traceDebug(logger, traceOn -> {
+                int code = response.getRawStatusCode();
+                HttpStatus status = HttpStatus.resolve(code);
+                return logPrefix + "Response " + (status != null ? status : code) +
+                        (traceOn ? ", headers=" + formatHeaders(response.getHeaders()) : "");
+            });
+        }
+
+        private HttpRequest createRequest(ClientRequest request) {
+            return new HttpRequest() {
+
+                @Override
+                public HttpMethod getMethod() {
+                    return request.method();
+                }
+
+                @Override
+                public String getMethodValue() {
+                    return request.method().name();
+                }
+
+                @Override
+                public URI getURI() {
+                    return request.url();
+                }
+
+                @Override
+                public HttpHeaders getHeaders() {
+                    return request.headers();
+                }
+            };
         }
 
         @Override
