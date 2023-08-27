@@ -2,9 +2,13 @@ package org.springframework.web.reactive.function.client;
 
 import org.reactivestreams.Publisher;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.codec.Hints;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.client.reactive.ClientHttpRequest;
+import org.springframework.http.codec.HttpMessageWriter;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.lang.Nullable;
 import org.springframework.util.*;
 import org.springframework.web.reactive.function.BodyInserter;
@@ -12,10 +16,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
@@ -214,7 +215,39 @@ final class DefaultClientRequestBuilder implements ClientRequest.Builder {
 
         @Override
         public Mono<Void> writeTo(ClientHttpRequest request, ExchangeStrategies strategies) {
-            throw new Error();
+            HttpHeaders requestHeaders = request.getHeaders();
+            if (!this.headers.isEmpty()) {
+                this.headers.entrySet().stream()
+                        .filter(entry -> !requestHeaders.containsKey(entry.getKey()))
+                        .forEach(entry -> requestHeaders
+                                .put(entry.getKey(), entry.getValue()));
+            }
+
+            MultiValueMap<String, HttpCookie> requestCookies = request.getCookies();
+            if (!this.cookies.isEmpty()) {
+                this.cookies.forEach((name, values) -> values.forEach(value -> {
+                    HttpCookie cookie = new HttpCookie(name, value);
+                    requestCookies.add(name, cookie);
+                }));
+            }
+            if (this.httpRequestConsumer != null) {
+                this.httpRequestConsumer.accept(request);
+            }
+
+            return this.body.insert(request, new BodyInserter.Context() {
+                @Override
+                public List<HttpMessageWriter<?>> messageWriters() {
+                    return strategies.messageWriters();
+                }
+                @Override
+                public Optional<ServerHttpRequest> serverRequest() {
+                    return Optional.empty();
+                }
+                @Override
+                public Map<String, Object> hints() {
+                    return Hints.from(Hints.LOG_PREFIX_HINT, logPrefix());
+                }
+            });
         }
     }
 }
